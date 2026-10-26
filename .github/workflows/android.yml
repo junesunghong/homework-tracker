@@ -58,9 +58,10 @@ jobs:
         run: |
           APK=app/build/outputs/apk/release/app-release.apk
           BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
-          echo "== 서명 (v1/v2 가 유효해야 설치된다)"
+          echo "== 서명 (v2 가 유효해야 설치된다)"
           "$BT/apksigner" verify --verbose --print-certs "$APK" | tee sign.txt | grep -E "Verified using|Signer #1 certificate (DN|SHA-256)"
-          grep -q "v1 scheme (JAR signing): true" sign.txt && grep -q "v2 scheme (APK Signature Scheme v2): true" sign.txt || { echo "::error::v1·v2 서명이 모두 있어야 합니다"; exit 1; }
+          # minSdk 24(안드로이드 7.0+)는 모두 v2 서명을 읽는다. v1 은 안드로이드 6 이하용이라 없어도 된다.
+          grep -q "v2 scheme (APK Signature Scheme v2): true" sign.txt || { echo "::error::v2 서명이 유효하지 않습니다"; exit 1; }
           echo "== 매니페스트"
           "$BT/aapt2" dump badging "$APK" | grep -E "^package:|minSdkVersion|sdkVersion|targetSdkVersion|native-code|application-label:" | tee badging.txt
           grep -Eq "(minSdkVersion|sdkVersion):'24'" badging.txt || { echo "::error::minSdk 가 24(안드로이드 7)가 아닙니다"; exit 1; }
