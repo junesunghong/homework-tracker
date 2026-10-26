@@ -17,3 +17,8 @@ server/apk/
 dist/
 __pycache__/
 .pytest_cache/
+
+# Claude Code — .claude/commands/ 는 커밋한다(클라우드·모바일 세션이 /작업시작 을 쓰려면 git 에 실려야 한다).
+# settings 두 개만 뺀다: 승인 흐름이 일회성 경로를 append 하고, local 은 PC 마다 다르다.
+.claude/settings.json
+.claude/settings.local.json
