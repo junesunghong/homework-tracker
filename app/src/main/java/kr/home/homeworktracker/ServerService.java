@@ -43,7 +43,9 @@ public class ServerService extends Service {
     private WifiManager.MulticastLock multicastLock;
 
     static void start(Context c) {
-        c.startForegroundService(new Intent(c, ServerService.class));
+        Intent i = new Intent(c, ServerService.class);
+        if (Build.VERSION.SDK_INT >= 26) c.startForegroundService(i);
+        else c.startService(i);  // 안드로이드 7
     }
 
     static void stop(Context c) {
@@ -150,16 +152,23 @@ public class ServerService extends Service {
         getSystemService(NotificationManager.class).notify(NOTIFY_ID, notification(text));
     }
 
+    @SuppressWarnings("deprecation")
     private Notification notification(String text) {
-        NotificationManager nm = getSystemService(NotificationManager.class);
-        if (nm.getNotificationChannel(CHANNEL) == null) {
-            NotificationChannel ch = new NotificationChannel(CHANNEL, "숙제 체크 서버", NotificationManager.IMPORTANCE_LOW);
-            ch.setDescription("이 기기가 집 서버로 동작하는 동안 표시됩니다");
-            nm.createNotificationChannel(ch);
+        Notification.Builder b;
+        if (Build.VERSION.SDK_INT >= 26) {
+            NotificationManager nm = getSystemService(NotificationManager.class);
+            if (nm.getNotificationChannel(CHANNEL) == null) {
+                NotificationChannel ch = new NotificationChannel(CHANNEL, "숙제 체크 서버", NotificationManager.IMPORTANCE_LOW);
+                ch.setDescription("이 기기가 집 서버로 동작하는 동안 표시됩니다");
+                nm.createNotificationChannel(ch);
+            }
+            b = new Notification.Builder(this, CHANNEL);
+        } else {
+            b = new Notification.Builder(this).setPriority(Notification.PRIORITY_LOW);  // 안드로이드 7
         }
         PendingIntent open = PendingIntent.getActivity(this, 0, new Intent(this, MainActivity.class),
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-        return new Notification.Builder(this, CHANNEL)
+        return b
                 .setSmallIcon(R.drawable.ic_stat)
                 .setContentTitle("숙제 체크 서버")
                 .setContentText(text)

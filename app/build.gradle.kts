@@ -16,7 +16,7 @@ android {
 
     defaultConfig {
         applicationId = "kr.home.homeworktracker"
-        minSdk = 26
+        minSdk = 24  // 안드로이드 7 이상 (공기 심판과 같다). 구형 탭에서 "파싱 오류"로 설치가 막히지 않게
         targetSdk = 35
         versionCode = appVersionCode
         versionName = appVersion
@@ -61,14 +61,19 @@ android {
     buildFeatures {
         buildConfig = true
     }
-
-    // 화면(static/)은 server/ 의 것을 그대로 앱에 넣는다 — 복사본을 저장소에 두지 않는다.
-    sourceSets {
-        getByName("main") {
-            assets.srcDir(layout.buildDirectory.dir("generated/hw-assets"))
-        }
-    }
 }
+
+// 화면(static/)과 server.py 는 server/ 의 것을 빌드할 때 복사해 넣는다 — 저장소에 복사본을 두지 않는다.
+// 소스 폴더에 복사 작업 자체를 넘겨야 Gradle 이 "복사 → 사용" 순서를 안다(Gradle 9 는 순서가 없으면 빌드를 막는다).
+val syncWeb = tasks.register<Sync>("syncWeb") {
+    from(rootProject.file("server/static")) { into("web") }
+    into(layout.buildDirectory.dir("generated/hw-assets"))
+}
+val syncPython = tasks.register<Sync>("syncPython") {
+    from(rootProject.file("server/server.py"))
+    into(layout.buildDirectory.dir("generated/hw-python"))
+}
+android.sourceSets.getByName("main").assets.srcDir(layout.buildDirectory.dir("generated/hw-assets"))
 
 chaquopy {
     defaultConfig {
@@ -79,19 +84,12 @@ chaquopy {
     }
     sourceSets {
         getByName("main") {
-            srcDir(layout.buildDirectory.dir("generated/hw-python"))
+            srcDir(syncPython)
         }
     }
 }
 
-val syncWeb by tasks.registering(Sync::class) {
-    from(rootProject.file("server/static"))
-    into(layout.buildDirectory.dir("generated/hw-assets/web"))
-}
-val syncPython by tasks.registering(Sync::class) {
-    from(rootProject.file("server/server.py"))
-    into(layout.buildDirectory.dir("generated/hw-python"))
-}
-tasks.named("preBuild") {
-    dependsOn(syncWeb, syncPython)
+// 위 연결로 대부분 해결되지만, 소스 폴더를 읽는 다른 작업(lint 등)도 복사 뒤에 돌도록 한 번 더 묶는다.
+tasks.configureEach {
+    if (name != "syncWeb" && name != "syncPython" && name != "clean") dependsOn(syncWeb, syncPython)
 }

@@ -65,6 +65,14 @@ jobs:
           cp app/build/outputs/apk/release/app-release.apk pkg/homework-tracker-server/apk/homework-tracker.apk
           printf '{"versionCode": %s, "versionName": "%s"}\n' "$CODE" "$VER" > pkg/homework-tracker-server/apk/version.json
           cp pkg/homework-tracker-server/apk/version.json out/version.json
+          # 받는 사람용 설치 안내 (메모장에서 한글이 깨지지 않게 UTF-8 BOM)
+          python - "$VER" <<'PY'
+          import sys
+          ver = "v" + sys.argv[1]
+          text = open("deploy/설치안내.txt", encoding="utf-8").read().replace("{버전}", ver)
+          for path in (f"out/숙제체크-설치안내-{ver}.txt", "pkg/homework-tracker-server/설치안내.txt"):
+              open(path, "w", encoding="utf-8-sig", newline="\r\n").write(text)
+          PY
           (cd pkg && zip -qr "../out/homework-tracker-server-v$VER.zip" homework-tracker-server)
           ls -la out
 
