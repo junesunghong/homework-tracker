@@ -72,7 +72,7 @@ android {
 
 chaquopy {
     defaultConfig {
-        version = "3.12"
+        version = "3.11"  // 3.12 이상은 32비트 ARM(armeabi-v7a) 런타임이 없다 — 저가형 태블릿 지원
         pyc {
             src = false  // 빌드 PC 의 파이썬 버전과 무관하게 빌드되도록 .py 그대로 넣는다
         }

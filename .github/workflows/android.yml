@@ -18,7 +18,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.11"  # 앱에 내장되는 파이썬과 같은 버전으로 테스트
 
       - name: 서버 테스트
         working-directory: server
