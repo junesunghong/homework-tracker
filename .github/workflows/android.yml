@@ -1,0 +1,80 @@
+name: Android APK
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 서버 테스트
+        working-directory: server
+        run: python -m unittest discover -s tests -v
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: 서명 키 준비 (Secrets 에 HW_KEYSTORE_B64 가 있을 때)
+        env:
+          KS_B64: ${{ secrets.HW_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KS_B64" ]; then
+            echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/homework.jks"
+            echo "HW_KS_FILE=$RUNNER_TEMP/homework.jks" >> "$GITHUB_ENV"
+            echo "서명 키 사용"
+          elif [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "::error::릴리스(태그)는 서명 키가 있어야 합니다. 키가 바뀌면 설치된 앱이 업데이트되지 않습니다. README 「서명 키」 참고."
+            exit 1
+          else
+            echo "::warning::HW_KEYSTORE_B64 가 없어 디버그 키로 서명합니다. 시험 설치만 하고, 업데이트는 이어지지 않습니다."
+          fi
+
+      - name: APK 빌드
+        env:
+          HW_KS_PASS: ${{ secrets.HW_KS_PASS }}
+          HW_KEY_PASS: ${{ secrets.HW_KS_PASS }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: 산출물 정리 (APK · version.json · PC 서버 zip)
+        run: |
+          VER=$(python -c "import re;print(re.search(r'APP_VERSION = \"([0-9.]+)\"', open('server/server.py', encoding='utf-8').read()).group(1))")
+          CODE=$(python -c "a,b,c='$VER'.split('.');print(int(a)*10000+int(b)*100+int(c))")
+          mkdir -p out pkg/homework-tracker-server/apk
+          cp app/build/outputs/apk/release/app-release.apk "out/homework-tracker-v$VER.apk"
+          # PC 서버 zip: 서버 + 앱 업데이트 폴더(apk/) — PC 를 서버로 쓸 때 다른 기기에 앱을 나눠 준다
+          cp -r server/server.py server/static server/run.sh server/run.bat pkg/homework-tracker-server/
+          cp app/build/outputs/apk/release/app-release.apk pkg/homework-tracker-server/apk/homework-tracker.apk
+          printf '{"versionCode": %s, "versionName": "%s"}\n' "$CODE" "$VER" > pkg/homework-tracker-server/apk/version.json
+          cp pkg/homework-tracker-server/apk/version.json out/version.json
+          (cd pkg && zip -qr "../out/homework-tracker-server-v$VER.zip" homework-tracker-server)
+          ls -la out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: homework-tracker
+          path: out/*
+
+      - name: 태그면 릴리스에 첨부
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: out/*

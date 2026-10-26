@@ -1,0 +1,19 @@
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+.DS_Store
+captures/
+.externalNativeBuild/
+.cxx/
+*.jks
+*.keystore
+keystore/
+
+# 서버 실행 데이터 · 앱 업데이트 폴더(릴리스에서 받아 넣는다) · 파이썬 캐시
+server/data/
+server/apk/
+dist/
+__pycache__/
+.pytest_cache/
