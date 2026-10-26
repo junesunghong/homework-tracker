@@ -46,6 +46,13 @@ android {
         }
     }
 
+    // v1(JAR) + v2 서명을 모두 넣는다. minSdk 24 면 기본은 v2 만인데, 구형·제조사 설치기에서
+    // "앱이 설치되지 않았습니다"가 나지 않도록 v1 도 붙인다(크기 차이는 거의 없다).
+    signingConfigs.configureEach {
+        enableV1Signing = true
+        enableV2Signing = true
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false

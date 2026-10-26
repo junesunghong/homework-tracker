@@ -59,10 +59,11 @@ jobs:
           APK=app/build/outputs/apk/release/app-release.apk
           BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
           echo "== 서명 (v1/v2 가 유효해야 설치된다)"
-          "$BT/apksigner" verify --verbose --print-certs "$APK" | grep -E "Verified using|Signer #1 certificate (DN|SHA-256)"
+          "$BT/apksigner" verify --verbose --print-certs "$APK" | tee sign.txt | grep -E "Verified using|Signer #1 certificate (DN|SHA-256)"
+          grep -q "v1 scheme (JAR signing): true" sign.txt && grep -q "v2 scheme (APK Signature Scheme v2): true" sign.txt || { echo "::error::v1·v2 서명이 모두 있어야 합니다"; exit 1; }
           echo "== 매니페스트"
-          "$BT/aapt2" dump badging "$APK" | grep -E "^package:|sdkVersion|targetSdkVersion|native-code|application-label:" | tee badging.txt
-          grep -q "sdkVersion:'24'" badging.txt || { echo "::error::minSdk 가 24(안드로이드 7)가 아닙니다"; exit 1; }
+          "$BT/aapt2" dump badging "$APK" | grep -E "^package:|minSdkVersion|sdkVersion|targetSdkVersion|native-code|application-label:" | tee badging.txt
+          grep -Eq "(minSdkVersion|sdkVersion):'24'" badging.txt || { echo "::error::minSdk 가 24(안드로이드 7)가 아닙니다"; exit 1; }
           grep -q "arm64-v8a" badging.txt && grep -q "armeabi-v7a" badging.txt || { echo "::error::arm64-v8a·armeabi-v7a 가 모두 들어 있어야 합니다"; exit 1; }
           grep -q "testOnly" badging.txt && { echo "::error::testOnly APK 는 일반 설치가 안 됩니다"; exit 1; } || true
           echo "== 내장 파일"
